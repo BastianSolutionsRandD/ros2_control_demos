@@ -16,6 +16,7 @@
   <xacro:property name="caster_wheel_radius" value="0.015" />
   <xacro:property name="z_offset" value="-${base_height/2}" /> <!-- Space btw top of beam and the each joint -->
 
+  <link name="base_footprint" />
   <!-- Base Link -->
   <link name="${prefix}base_link">
     <collision>
@@ -43,6 +44,13 @@
       </inertial>
     </link>
 
+    <joint name="${prefix}base_link_joint" type="fixed">
+      <origin xyz="0 0 ${z_offset}" rpy="0 0 0" />
+      <parent link="base_footprint" />
+      <child link="${prefix}base_link" />
+      <axis xyz="0 0 1" />
+    </joint>
+  
     <joint name="${prefix}left_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}left_wheel"/>

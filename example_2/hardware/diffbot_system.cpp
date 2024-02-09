@@ -24,6 +24,8 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+typedef roboteq_minican::RoboteqMiniCAN::PDOAddress PDO;
+
 namespace ros2_control_demo_example_2
 {
 hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
@@ -43,6 +45,7 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_init(
   hw_positions_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_velocities_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   hw_commands_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
+  controller_ = new roboteq_minican::RoboteqMiniCAN(0x02, 0x00);
 
   for (const hardware_interface::ComponentInfo & joint : info_.joints)
   {
@@ -164,6 +167,14 @@ hardware_interface::CallbackReturn DiffBotSystemHardware::on_deactivate(
     RCLCPP_INFO(
       rclcpp::get_logger("DiffBotSystemHardware"), "%.1f seconds left...", hw_stop_sec_ - i);
   }
+ 
+  for (size_t i = 0; i < info_.joints.size(); i++)
+	{
+		int16_t rpm = 0;
+        controller_->setRxPDOVar(PDO::RxPDO3, i, rpm);
+	}
+    controller_->sendFrame(PDO::RxPDO3);
+
   // END: This part here is for exemplary purposes - Please do not copy to your production code
 
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Successfully deactivated!");
@@ -182,12 +193,23 @@ hardware_interface::return_type DiffBotSystemHardware::read(
     // Simply integrates
     hw_positions_[i] = hw_positions_[i] + period.seconds() * hw_velocities_[i];
 
-    RCLCPP_INFO(
-      rclcpp::get_logger("DiffBotSystemHardware"),
-      "Got position state %.5f and velocity state %.5f for '%s'!", hw_positions_[i],
-      hw_velocities_[i], info_.joints[i].name.c_str());
+    // RCLCPP_INFO(
+    //   rclcpp::get_logger("DiffBotSystemHardware"),
+    //   "Read  Got position state for Shania %.5f and velocity state %.5f for '%s'!", hw_positions_[i],
+    //   hw_velocities_[i], info_.joints[i].name.c_str());
   }
   // END: This part here is for exemplary purposes - Please do not copy to your production code
+
+  for (size_t i = 0; i < info_.joints.size(); i++)
+	{
+		int16_t rpm_feedback = hw_velocities_[i];
+    //  RCLCPP_INFO(rclcpp::get_logger("ShaniaSystemHardware"), "Read RPM[%zu]: %d", i, rpm_feedback);
+		controller_->getTxPDOVar(PDO::TxPDO3, i, rpm_feedback);
+		hw_velocities_[i] = rpm_feedback * RPM_TO_RADS * WHEEL_RADIUS * 2 / GEAR_RATIO / M_PI / 60;
+		// Print RPM value for each joint
+    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read Joint %zu RPM Feedback: %f", i, hw_velocities_[i]);
+	}
+	// RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read successfull..");
 
   return hardware_interface::return_type::OK;
 }
@@ -196,18 +218,27 @@ hardware_interface::return_type ros2_control_demo_example_2 ::DiffBotSystemHardw
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
   // BEGIN: This part here is for exemplary purposes - Please do not copy to your production code
-  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Writing...");
+  // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Writing...");
 
   for (auto i = 0u; i < hw_commands_.size(); i++)
   {
     // Simulate sending commands to the hardware
-    RCLCPP_INFO(
-      rclcpp::get_logger("DiffBotSystemHardware"), "Got command %.5f for '%s'!", hw_commands_[i],
-      info_.joints[i].name.c_str());
+    // RCLCPP_INFO(
+      // rclcpp::get_logger("DiffBotSystemHardware"), "Write Got command %.5f for '%s'!", hw_commands_[i],
+      // info_.joints[i].name.c_str());
 
     hw_velocities_[i] = hw_commands_[i];
+
+    int16_t rpm = hw_commands_[i] * RADS_TO_RPM * GEAR_RATIO;
+    // RCLCPP_INFO(rclcpp::get_logger("ShaniaSystemHardware"), "Write RPM[%zu]: %d", i, rpm);
+		controller_->setRxPDOVar(PDO::RxPDO3, i, rpm);
+
+		// Print RPM value for each joint
+    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Write Joint %zu RPM: %f", i, rpm);
+
   }
-  RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Joints successfully written!");
+  controller_->sendFrame(PDO::RxPDO3);
+  // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Joints successfully written!");
   // END: This part here is for exemplary purposes - Please do not copy to your production code
 
   return hardware_interface::return_type::OK;

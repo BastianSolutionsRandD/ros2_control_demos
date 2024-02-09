@@ -15,6 +15,13 @@
 #ifndef ROS2_CONTROL_DEMO_EXAMPLE_2__DIFFBOT_SYSTEM_HPP_
 #define ROS2_CONTROL_DEMO_EXAMPLE_2__DIFFBOT_SYSTEM_HPP_
 
+
+#define RADS_TO_RPM 9.549296585513721
+#define RPM_TO_RADS 0.10471975511965977
+#define GEAR_RATIO 15.0
+#define WHEEL_RADIUS 0.0625
+
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,6 +38,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 
 #include "ros2_control_demo_example_2/visibility_control.h"
+#include "roboteq_minican/roboteq_minican.h"
 
 namespace ros2_control_demo_example_2
 {
@@ -74,6 +82,9 @@ private:
   std::vector<double> hw_commands_;
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
+
+  // RoboteQ MiniCAN
+	roboteq_minican::RoboteqMiniCAN* controller_;
 };
 
 }  // namespace ros2_control_demo_example_2

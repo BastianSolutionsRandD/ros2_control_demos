@@ -15,6 +15,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(roboteq_minican REQUIRED)
 foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
@@ -34,6 +35,7 @@ $<INSTALL_INTERFACE:include/ros2_control_demo_example_2>
 ament_target_dependencies(
   ros2_control_demo_example_2 PUBLIC
   ${THIS_PACKAGE_INCLUDE_DEPENDS}
+  roboteq_minican
 )
 
 # Causes the visibility macros to use dllexport rather than dllimport,
