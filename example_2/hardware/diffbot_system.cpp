@@ -186,28 +186,42 @@ hardware_interface::return_type DiffBotSystemHardware::read(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & period)
 {
   // BEGIN: This part here is for exemplary purposes - Please do not copy to your production code
-  for (std::size_t i = 0; i < hw_velocities_.size(); i++)
-  {
-    // Simulate DiffBot wheels's movement as a first-order system
-    // Update the joint status: this is a revolute joint without any limit.
-    // Simply integrates
-    hw_positions_[i] = hw_positions_[i] + period.seconds() * hw_velocities_[i];
+  // for (std::size_t i = 0; i < hw_velocities_.size(); i++)
+  // {
+  //   // Simulate DiffBot wheels's movement as a first-order system
+  //   // Update the joint status: this is a revolute joint without any limit.
+  //   // Simply integrates
+  //   hw_positions_[i] = hw_positions_[i] + period.seconds() * hw_velocities_[i];
 
-    // RCLCPP_INFO(
-    //   rclcpp::get_logger("DiffBotSystemHardware"),
-    //   "Read  Got position state for Shania %.5f and velocity state %.5f for '%s'!", hw_positions_[i],
-    //   hw_velocities_[i], info_.joints[i].name.c_str());
-  }
+  //   // RCLCPP_INFO(
+  //   //   rclcpp::get_logger("DiffBotSystemHardware"),
+  //   //   "Read  Got position state for Shania %.5f and velocity state %.5f for '%s'!", hw_positions_[i],
+  //   //   hw_velocities_[i], info_.joints[i].name.c_str());
+  // }
   // END: This part here is for exemplary purposes - Please do not copy to your production code
 
-  for (size_t i = 0; i < info_.joints.size(); i++)
+  for (size_t i = 0; i < hw_velocities_.size(); i++)
 	{
-		int16_t rpm_feedback = hw_velocities_[i];
+		int16_t rpm_feedback = 0;
+    double angular_velocity = 0.0;
+    double linear_velocity = 0.0;
     //  RCLCPP_INFO(rclcpp::get_logger("ShaniaSystemHardware"), "Read RPM[%zu]: %d", i, rpm_feedback);
 		controller_->getTxPDOVar(PDO::TxPDO3, i, rpm_feedback);
-		hw_velocities_[i] = rpm_feedback * RPM_TO_RADS * WHEEL_RADIUS * 2 / GEAR_RATIO / M_PI / 60;
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read RPM Feedback: %d",rpm_feedback);
+    angular_velocity = rpm_feedback * RPM_TO_RADS;
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read angular_velocity Feedback: %f",angular_velocity);
+    linear_velocity = angular_velocity * WHEEL_RADIUS;
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read linear_velocity Feedback: %f",linear_velocity);
+		// hw_velocities_[i] = rpm_feedback *100000.0 * RPM_TO_RADS * WHEEL_RADIUS * 2 / GEAR_RATIO / M_PI / 60;
+    hw_velocities_[i] = angular_velocity / GEAR_RATIO;
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read hw_velocities_[i] Feedback: %f",hw_velocities_[i]);
+    hw_positions_[i] = hw_positions_[i] + period.seconds() * hw_velocities_[i];
 		// Print RPM value for each joint
-    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read Joint %zu RPM Feedback: %f", i, hw_velocities_[i]);
+    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read Joint %zu RPM Feedback: %f hw_velocity: %f", i,rpm_feedback, hw_velocities_[i]);
+     RCLCPP_INFO(
+      rclcpp::get_logger("DiffBotSystemHardware"),
+      "Got position state %.5f and velocity state %.5f for '%s'!", hw_positions_[i],
+      hw_velocities_[i], info_.joints[i].name.c_str());
 	}
 	// RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Read successfull..");
 
@@ -227,14 +241,15 @@ hardware_interface::return_type ros2_control_demo_example_2 ::DiffBotSystemHardw
       // rclcpp::get_logger("DiffBotSystemHardware"), "Write Got command %.5f for '%s'!", hw_commands_[i],
       // info_.joints[i].name.c_str());
 
-    hw_velocities_[i] = hw_commands_[i];
+    // hw_velocities_[i] = hw_commands_[i];
 
     int16_t rpm = hw_commands_[i] * RADS_TO_RPM * GEAR_RATIO;
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Write hw_commands_[i] Feedback: %f",hw_commands_[i]);
     // RCLCPP_INFO(rclcpp::get_logger("ShaniaSystemHardware"), "Write RPM[%zu]: %d", i, rpm);
 		controller_->setRxPDOVar(PDO::RxPDO3, i, rpm);
-
+    RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Write RPM Feedback: %d",rpm);
 		// Print RPM value for each joint
-    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Write Joint %zu RPM: %f", i, rpm);
+    // RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Write Joint %zu RPM: %f and hw_commands_[i] %f", i, rpm, hw_commands_[i]);
 
   }
   controller_->sendFrame(PDO::RxPDO3);
